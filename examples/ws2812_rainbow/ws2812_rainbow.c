@@ -22,7 +22,7 @@
 
 
 /** GPIO number used to control the RGBs */
-static const uint8_t pin = 2;
+static const uint8_t pin = 3;
 
 
 /**
@@ -134,7 +134,7 @@ void user_init(void)
 
     // Choose how to run it:
 
-#if true
+#if false
 
     // Blocking function - works OK, because WiFi isn't
     // initialized yet & we're hogging the CPU.

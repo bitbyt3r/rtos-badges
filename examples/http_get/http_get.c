@@ -11,7 +11,6 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -20,9 +19,9 @@
 
 #include "ssid_config.h"
 
-#define WEB_SERVER "chainxor.org"
+#define WEB_SERVER "dom.hackafe.net"
 #define WEB_PORT 80
-#define WEB_URL "http://chainxor.org/"
+#define WEB_URL "http://dom.hackafe.net/"
 
 void http_get_task(void *pvParameters)
 {
