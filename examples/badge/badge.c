@@ -40,17 +40,14 @@ void udp_server(void *pvParameters)
 void led_controller(void *pvParameters)
 {
     QueueHandle_t *ledqueue = (QueueHandle_t *)pvParameters;
-    printf("Turning on LEDs\n");
-    ws2812_seq_start();
-    ws2812_seq_rgb(GPIO_LED, 0x0F0000);
-    ws2812_seq_rgb(GPIO_LED, 0x000F00);
-    ws2812_seq_rgb(GPIO_LED, 0x00000F);
-    ws2812_seq_rgb(GPIO_LED, 0x0F0F00);
-    ws2812_seq_end();
-    printf("LEDs should be on\n");
     while(1)
     {
-        printf("Looping\n");
+        ws2812_seq_start();
+        ws2812_seq_rgb(GPIO_LED, 0x010000);
+        ws2812_seq_rgb(GPIO_LED, 0x020000);
+        ws2812_seq_rgb(GPIO_LED, 0x040000);
+        ws2812_seq_rgb(GPIO_LED, 0x080000);
+        ws2812_seq_end();
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
@@ -67,11 +64,9 @@ void button_watcher(void *pvParameters)
         // Send out some UDP data
         struct netconn* conn;
 
-        printf("Starting UDP Connection\n");
         // Create UDP connection
         conn = netconn_new(NETCONN_UDP);
 
-        printf("Binding to local port\n");
         // Connect to local port
         err = netconn_bind(conn, IP_ADDR_ANY, 8004);
 
@@ -81,7 +76,6 @@ void button_watcher(void *pvParameters)
             continue;
         }
 
-        printf("Creating broadcast socket on port 8005\n");
         err = netconn_connect(conn, IP_ADDR_BROADCAST, 8005);
 
         if (err != ERR_OK) {
@@ -91,14 +85,13 @@ void button_watcher(void *pvParameters)
         }
 
         for(;;) {
-            uint8_t button;
-            printf("Waiting for queue message\n");
+            uint32_t button;
             xQueueReceive(*buttonqueue, &button, portMAX_DELAY);
             printf("Button %d pushed.\n", button);
             struct netbuf* buf = netbuf_new();
-            void* data = netbuf_alloc(buf, 7);
-            memcpy(buf, hwaddr, 6);
-            memcpy(buf+6,button, 1);
+            void* data = netbuf_alloc(buf, 8);
+            memcpy(data, hwaddr, 6);
+            memcpy((void*)((char*)data+6), &button, 1);
             err = netconn_send(conn, buf);
 
             if (err != ERR_OK) {
@@ -114,56 +107,64 @@ void button_watcher(void *pvParameters)
         err = netconn_delete(conn);
         printf("%s : Deleted connection (%s)\n", __FUNCTION__, lwip_strerr(err));
 
-        vTaskDelay(1000/portTICK_PERIOD_MS);
+        vTaskDelay(100/portTICK_PERIOD_MS);
     }
 }
 
 void gpio00_interrupt_handler(void)
 {
     printf("RIGHT\n");
-    xQueueSendToBackFromISR(buttonqueue, 0, NULL);
+    uint32_t buttonid = 0;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio02_interrupt_handler(void)
 {
     printf("DOWN\n");
-    //xQueueSendToBackFromISR(buttonqueue, 1, NULL);
+    uint32_t buttonid = 1;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio04_interrupt_handler(void)
 {
     printf("B\n");
-    //xQueueSendToBackFromISR(buttonqueue, 2, NULL);
+    uint32_t buttonid = 2;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio05_interrupt_handler(void)
 {
     printf("A\n");
-    //xQueueSendToBackFromISR(buttonqueue, 2, NULL);
+    uint32_t buttonid = 3;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio12_interrupt_handler(void)
 {
     printf("LEFT\n");
-    //xQueueSendToBackFromISR(buttonqueue, 2, NULL);
+    uint32_t buttonid = 4;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio13_interrupt_handler(void)
 {
     printf("UP\n");
-    //xQueueSendToBackFromISR(buttonqueue, 2, NULL);
+    uint32_t buttonid = 5;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio14_interrupt_handler(void)
 {
     printf("SELECT\n");
-    //xQueueSendToBackFromISR(buttonqueue, 2, NULL);
+    uint32_t buttonid = 6;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void gpio15_interrupt_handler(void)
 {
     printf("START\n");
-    //xQueueSendToBackFromISR(buttonqueue, 2, NULL);
+    uint32_t buttonid = 7;
+    xQueueSendToBackFromISR(buttonqueue, &buttonid, NULL);
 }       
 
 void user_init(void)
@@ -205,7 +206,7 @@ void user_init(void)
     gpio_set_interrupt(GPIO_B,      GPIO_INTTYPE_EDGE_NEG);
     gpio_set_interrupt(GPIO_A,      GPIO_INTTYPE_EDGE_NEG);
 
-    buttonqueue = xQueueCreate(16, 1);
+    buttonqueue = xQueueCreate(2, sizeof(uint32_t));
     ledqueue = xQueueCreate(16, 4);
     xTaskCreate(&button_watcher, "Button Watcher", 256, &buttonqueue, 2, NULL);
     xTaskCreate(&led_controller, "LED Controller", 256, &ledqueue, 2, NULL);
